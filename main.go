@@ -26,10 +26,10 @@ func main() {
 */
 
 	routes := map[string]int {
-		"test" : 8080,
+		"test" : 3000,
 	}
 
-	s := NewSeaport(3000, routes)
+	s := NewSeaport(80, routes)
 
 	s.Listen()
 }
