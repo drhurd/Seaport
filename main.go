@@ -1,11 +1,11 @@
 package main
 
 import (
-	// "github.com/fsouza/go-dockerclient"
+	"github.com/fsouza/go-dockerclient"
 )
 
 func main() {
-/*
+
 	endpoint := "unix:///var/run/docker.sock"
 	client, err := docker.NewClient(endpoint)
 
@@ -23,7 +23,7 @@ func main() {
 		fmt.Println("VirtualSize: ", img.VirtualSize)
 		fmt.Println("ParentId: ", img.ParentID)
 	}
-*/
+
 
 	routes := map[string]int {
 		"test" : 3000,
