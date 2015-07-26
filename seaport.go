@@ -7,7 +7,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
-	// "fmt"
+	"fmt"
 )
 
 type Seaport struct {
@@ -35,6 +35,8 @@ func (s *Seaport) Listen() {
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		fmt.Println("accepting connection")
 
 		// Handle the request
 		go forward(conn, s.routes)

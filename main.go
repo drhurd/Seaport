@@ -2,6 +2,9 @@ package main
 
 import (
 	"github.com/fsouza/go-dockerclient"
+	"fmt"
+	"log"
+	"strings"
 )
 
 func main() {
@@ -13,20 +16,27 @@ func main() {
 		log.Fatal("Unable to connect to docker client:", err)
 	}
 
-	imgs, _ := client.ListImages(docker.ListImagesOptions{All: false})
-	for _, img := range imgs {
-		fmt.Println("ID: ", img.ID)
-		//		fmt.Println("P: ", img.
-		fmt.Println("RepoTags: ", img.RepoTags)
-		fmt.Println("Created: ", img.Created)
-		fmt.Println("Size: ", img.Size)
-		fmt.Println("VirtualSize: ", img.VirtualSize)
-		fmt.Println("ParentId: ", img.ParentID)
-	}
+	routes := make(map[string]int)
 
+	// constructing the list of containers
+	containers, _ := client.ListContainers(docker.ListContainersOptions {All: false})
+	for _, container := range containers {
+		inspected_container, err := client.InspectContainer(container.ID)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	routes := map[string]int {
-		"test" : 3000,
+		if len(container.Ports) == 0 {
+			continue
+		}
+		port := int(container.Ports[0].PublicPort)
+		fmt.Println("Port: ", port)
+
+		name := inspected_container.Name
+		name = strings.Replace(name, "/", "", 1)
+		fmt.Println("Name: ", name)
+
+		routes[name] = port
 	}
 
 	s := NewSeaport(80, routes)
