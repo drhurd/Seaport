@@ -1,45 +1,33 @@
 package main
 
 import (
-	"github.com/fsouza/go-dockerclient"
-	"fmt"
-	"log"
-	"strings"
+	log "github.com/Sirupsen/logrus"
+	"gopkg.in/alecthomas/kingpin.v2"
+	"time"
+
+	"github.com/drhurd/seaport/docker"
+	"github.com/drhurd/seaport/seaport"
+)
+
+const (
+	logLevel = log.DebugLevel // set logging level here
+)
+
+var (
+	server_port = kingpin.Flag("port", "Specify the port seaport should use. Defaults to 80.").Default("80").Short('p').Int()
 )
 
 func main() {
+	// Configure the logger
+	log.SetLevel(logLevel)
 
-	endpoint := "unix:///var/run/docker.sock"
-	client, err := docker.NewClient(endpoint)
+	go func() {
+		time.Sleep(10000 * time.Millisecond)
+		log.Debug("Closing")
+		s.Close()
+	}()
 
-	if err != nil {
-		log.Fatal("Unable to connect to docker client:", err)
-	}
+	log.Debug("Server port flag: ", *server_port)
 
-	routes := make(map[string]int)
-
-	// constructing the list of containers
-	containers, _ := client.ListContainers(docker.ListContainersOptions {All: false})
-	for _, container := range containers {
-		inspected_container, err := client.InspectContainer(container.ID)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		if len(container.Ports) == 0 {
-			continue
-		}
-		port := int(container.Ports[0].PublicPort)
-		fmt.Println("Port: ", port)
-
-		name := inspected_container.Name
-		name = strings.Replace(name, "/", "", 1)
-		fmt.Println("Name: ", name)
-
-		routes[name] = port
-	}
-
-	s := NewSeaport(80, routes)
-
-	s.Listen()
+	s.Listen(80)
 }

@@ -1,46 +1,48 @@
-package main
+package seaport
 
 import (
 	"bytes"
 	"io"
-	"log"
+	log "github.com/Sirupsen/logrus"
 	"net"
 	"strconv"
 	"strings"
-	"fmt"
 )
 
 type Seaport struct {
-	port int // listening port
 	routes map[string]int // map of routes -> ports
+	listener net.Listener
 }
 
-func NewSeaport(port int, routes map[string]int) *Seaport {
-	s := Seaport{port, routes}
+func NewSeaport(routes map[string]int) *Seaport {
+	s := Seaport{routes, nil}
 	return &s
 }
 
-func (s *Seaport) Listen() {
-	port_str := ":" + strconv.Itoa(s.port)
-	log.Print("port: ", port_str)
+func (s *Seaport) Listen(port int) {
+	port_str := ":" + strconv.Itoa(port)
 	listener, err := net.Listen("tcp", port_str)
-
 	if err != nil {
 		log.Fatal("Unable to listen: ", err)
 	}
+
+	s.listener = listener
 
 	for {
 		// Wait for a connection.
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Fatal(err)
+			log.Warn(err)
+			break
 		}
-
-		fmt.Println("accepting connection")
 
 		// Handle the request
 		go forward(conn, s.routes)
 	}
+}
+
+func (s *Seaport) Close() {
+	s.listener.Close()
 }
 
 func forward(in net.Conn, routes map[string]int) {	
@@ -55,8 +57,11 @@ func forward(in net.Conn, routes map[string]int) {
 
 	// Search for a match the first time through
 	// TODO: wait for minimum buffer size
-	key := routeMatch(buf, routes)
-	if key != "" {
+	if key, ok := routeMatch(buf, routes); ok {
+		log.WithFields(log.Fields{
+			"name" : key,
+		}).Debug("Forwarding to container")
+
 		findAndRemove(buf, key, 1)
 
 		addr := ":" + strconv.Itoa(routes[key]) // port number -> address
@@ -88,17 +93,17 @@ func pipe(conn1, conn2 net.Conn) {
 	}()
 }
 
-func routeMatch(buf *bytes.Buffer, routes map[string]int) string {
+func routeMatch(buf *bytes.Buffer, routes map[string]int) (string, bool) {
 	// Extract the key
-	// Expects: "[Method] /key/rest_of_path [Protocol]"
+	// Expects: "[Method] /key/rest/of/path [Protocol]"
 	data_str := buf.String()
 	key := strings.Split(data_str, " ")[1]
 	key = strings.Split(key, "/")[1]
 
-	if routes[key] != 0 {
-		return key
+	if _, ok := routes[key]; ok {
+		return key, true
 	} else {
-		return ""
+		return "", false
 	}
 }
 
