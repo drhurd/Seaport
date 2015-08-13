@@ -45,7 +45,7 @@ type Config struct {
 func WriteConfigFile(f *os.File, routes map[string]int, config Config) {
 	var locations bytes.Buffer
 	for path, port := range routes {
-		location_str := "\t\tlocation /" + path + " {\n\t\t\treturn 302 /" + path + "/;\n\t\t}\n\n\t\tlocation /" + path + "/ {\n\t\t\tproxy_pass 127.0.0.1:" + strconv.Itoa(port) + ";\n\t\t}\n"
+		location_str := "\t\tlocation /" + path + " {\n\t\t\treturn 302 /" + path + "/;\n\t\t}\n\n\t\tlocation /" + path + "/ {\n\t\t\tproxy_pass 127.0.0.1:" + strconv.Itoa(port) + "/;\n\t\t}\n"
 
 		locations.WriteString(location_str)
 	}
