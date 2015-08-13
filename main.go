@@ -30,7 +30,7 @@ func main() {
 	kingpin.Parse()
 
 	if *seaport_mode {
-		runSeaportServer(80)
+		runSeaportServer(*server_port)
 	} else if *stop {
 		nginx.StopNginx()
 	} else {
