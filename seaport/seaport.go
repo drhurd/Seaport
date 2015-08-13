@@ -2,26 +2,30 @@ package seaport
 
 import (
 	"bytes"
-	"io"
 	log "github.com/Sirupsen/logrus"
+	"io"
 	"net"
 	"strconv"
 	"strings"
 )
 
+// Seaport represents the core functionality of the port forwarding
+// It forwards the paths specified by the routes keys to their corresponding port values
 type Seaport struct {
-	routes map[string]int // map of routes -> ports
+	routes   map[string]int // map of routes -> ports
 	listener net.Listener
 }
 
+// NewSeaport returns a new seaport object
 func NewSeaport(routes map[string]int) *Seaport {
 	s := Seaport{routes, nil}
 	return &s
 }
 
+// Listen starts the server
 func (s *Seaport) Listen(port int) {
-	port_str := ":" + strconv.Itoa(port)
-	listener, err := net.Listen("tcp", port_str)
+	portStr := ":" + strconv.Itoa(port)
+	listener, err := net.Listen("tcp", portStr)
 	if err != nil {
 		log.Fatal("Unable to listen: ", err)
 	}
@@ -41,11 +45,12 @@ func (s *Seaport) Listen(port int) {
 	}
 }
 
+// Close closes the listener connection, stopping seaport
 func (s *Seaport) Close() {
 	s.listener.Close()
 }
 
-func forward(in net.Conn, routes map[string]int) {	
+func forward(in net.Conn, routes map[string]int) {
 	buf := bytes.NewBuffer(make([]byte, 1024)) // connection data buffer
 
 	// read in from the connection
@@ -59,7 +64,7 @@ func forward(in net.Conn, routes map[string]int) {
 	// TODO: wait for minimum buffer size
 	if key, ok := routeMatch(buf, routes); ok {
 		log.WithFields(log.Fields{
-			"name" : key,
+			"name": key,
 		}).Debug("Forwarding to container")
 
 		findAndRemove(buf, key, 1)
@@ -71,7 +76,7 @@ func forward(in net.Conn, routes map[string]int) {
 		}
 
 		io.Copy(out, buf)
-		
+
 		pipe(in, out)
 	} else {
 		// TODO: return 404 error message
@@ -96,25 +101,22 @@ func pipe(conn1, conn2 net.Conn) {
 func routeMatch(buf *bytes.Buffer, routes map[string]int) (string, bool) {
 	// Extract the key
 	// Expects: "[Method] /key/rest/of/path [Protocol]"
-	data_str := buf.String()
-	key := strings.Split(data_str, " ")[1]
+	str := buf.String()
+	key := strings.Split(str, " ")[1]
 	key = strings.Split(key, "/")[1]
 
 	if _, ok := routes[key]; ok {
 		return key, true
-	} else {
-		return "", false
-	}
+	} 
+	
+	return "", false
 }
 
 func findAndRemove(buf *bytes.Buffer, pattern string, n int) {
-	data_str := buf.String()
-	data_str = strings.Replace(data_str, pattern, "", n)
-	data_str = strings.Replace(data_str, "//", "/", 1)
+	str := buf.String()
+	str = strings.Replace(str, pattern, "", n)
+	str = strings.Replace(str, "//", "/", 1)
 
 	buf.Truncate(0)
-	buf.Write([]byte(data_str))
+	buf.Write([]byte(str))
 }
-
-
-

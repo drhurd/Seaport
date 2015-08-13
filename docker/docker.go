@@ -1,46 +1,48 @@
 package docker
 
 import (
-	docker_client "github.com/fsouza/go-dockerclient"
 	log "github.com/Sirupsen/logrus"
+	dockerClient "github.com/fsouza/go-dockerclient"
 	"strings"
 )
 
 const (
-	docker_endpoint = "unix:///var/run/docker.sock"
+	dockerEndpoint = "unix:///var/run/docker.sock"
 )
 
+//Container is used pass around only the relevant docker container information
 type Container struct {
 	Name string
 	Port int64
 }
 
+// ListContainers returns a list of containers running with exposed TCP ports
 func ListContainers() []Container {
 	// Connect to docker
-	client, err := docker_client.NewClient(docker_endpoint)
-	if err != nil {
-		log.Fatal(err) 
-	}
-
-	containers, err := client.ListContainers(docker_client.ListContainersOptions {All: false})
+	client, err := dockerClient.NewClient(dockerEndpoint)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	valid_containers := make([]Container, 0)
+	containers, err := client.ListContainers(dockerClient.ListContainersOptions{All: false})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var validContainers []Container
 	for _, container := range containers {
 		// check for a valid port to map
-		var port_number int64
-		valid_port_found := false
+		var portNumber int64
+		validPortFound := false
 		for _, port := range container.Ports {
 			if port.Type == "tcp" {
-				port_number = port.PublicPort
-				valid_port_found = true
+				portNumber = port.PublicPort
+				validPortFound = true
 				break
 			}
 		}
 		// If no valid port, skip this container
-		if !valid_port_found {
+		if !validPortFound {
 			continue
 		}
 
@@ -53,8 +55,8 @@ func ListContainers() []Container {
 		// Strip the initial slash to set our name
 		name := strings.Replace(container.Names[0], "/", "", 1)
 
-		valid_containers = append(valid_containers, Container{name, port_number})
+		validContainers = append(validContainers, Container{name, portNumber})
 	}
 
-	return valid_containers
+	return validContainers
 }

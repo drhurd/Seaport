@@ -16,10 +16,10 @@ const (
 )
 
 var (
-	server_port = kingpin.Flag("port", "Specify the port seaport should use. Defaults to 80.").Default("80").Short('p').Int()
-	seaport_mode = kingpin.Flag("forward", "Use Seaport instead of Nginx to forward to docker containers. Currently under development, not recommended.").Short('f').Bool()
-	stop = kingpin.Flag("stop", "Stop the Nginx server").Short('s').Bool()
-	nginx_file = kingpin.Flag("config", "Nginx config file, Default = /etc/nginx/nginx.conf").Short('c').Default("/etc/nginx/nginx.conf").String()
+	serverPort  = kingpin.Flag("port", "Specify the port seaport should use. Defaults to 80.").Default("80").Short('p').Int()
+	seaportMode = kingpin.Flag("forward", "Use Seaport instead of Nginx to forward to docker containers. Currently under development, not recommended.").Short('f').Bool()
+	stop         = kingpin.Flag("stop", "Stop the Nginx server").Short('s').Bool()
+	nginxFile   = kingpin.Flag("config", "Nginx config file, Default = /etc/nginx/nginx.conf").Short('c').Default("/etc/nginx/nginx.conf").String()
 )
 
 func main() {
@@ -29,8 +29,8 @@ func main() {
 	// Parse the input
 	kingpin.Parse()
 
-	if *seaport_mode {
-		runSeaportServer(*server_port)
+	if *seaportMode {
+		runSeaportServer(*serverPort)
 	} else if *stop {
 		nginx.StopNginx()
 	} else {
@@ -49,23 +49,23 @@ func runNginxServer() {
 	routes := makeRouteMap(docker.ListContainers())
 
 	// Use nginx to forward
-	file, err := os.Create(*nginx_file)
+	file, err := os.Create(*nginxFile)
 	if err != nil {
 		log.Fatal("Couldn't open nginx file: ", err)
 	}
 
-	nginx.WriteConfigFile(file, routes, nginx.Config{ServerName:"localhost"})
+	nginx.WriteConfigFile(file, routes, nginx.Config{ServerName: "localhost"})
 
 	log.Debug("file written")
 
-	if nginx.NginxStatus() {
+	if nginx.Status() {
 		err = nginx.StopNginx()
 		if err != nil {
 			log.Fatal("Couldn't stop nginx: ", err)
 		}
 	}
 
-	err = nginx.StartNginx(*nginx_file)
+	err = nginx.StartNginx(*nginxFile)
 	if err != nil {
 		log.Fatal("Couldn't start nginx: ", err)
 	}
