@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
-	"strings"
 )
 
 const (
@@ -72,52 +71,17 @@ func WriteConfigFile(f *os.File, routes map[string]int, config Config) {
 	}
 }
 
-// StartNginx starts nginx
-func StartNginx(path string) error {
-	cmd := exec.Command("nginx", "-p", "/var/", "-c", path)
-	log.WithFields(log.Fields{
-		"args": cmd.Args,
-	}).Debug("Nginx Command created")
-
-	var out bytes.Buffer
-	cmd.Stdout = &out
-
-	var errOut bytes.Buffer
-	cmd.Stderr = &errOut
-
-	err := cmd.Run()
-	if err != nil {
-		log.Error("Nginx: ", errOut.String())
-	}
-	return err
+// StartNginx returns a command to start nginx
+func StartCommand(path string) *exec.Cmd {
+	return exec.Command("nginx", "-p", "/var/", "-c", path)
 }
 
-// StopNginx stops nginx
-func StopNginx() error {
-	cmd := exec.Command("nginx", "-p", "/var/", "-s", "stop")
-
-	return cmd.Run()
+// StopNginx returns a command to stop nginx
+func StopCommand() *exec.Cmd {
+	return exec.Command("nginx", "-p", "/var/", "-s", "stop")
 }
 
 // Status returns bool indicating if Nginx is currently running
-func Status() bool {
-	cmd := exec.Command("service", "nginx", "status")
-
-	var out bytes.Buffer
-	cmd.Stdout = &out
-
-	var errOut bytes.Buffer
-	cmd.Stderr = &errOut
-
-	cmd.Run()
-	// Service will return exit code 3 if nginx is not running.
-	// Not sure how to handle this right now.
-	/*	if err != nil && !exec.ExitError(err).ProcessState.Success() {
-			log.Warn("Status error: ", errOut.String())
-			log.Warn(out.String())
-			log.Fatal("Error getting status: ", err)
-		}
-	*/
-
-	return strings.Index(out.String(), "not") == -1
+func StatusCommand() *exec.Cmd {
+	return exec.Command("service", "nginx", "status")
 }

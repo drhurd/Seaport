@@ -12,42 +12,28 @@ import (
 // Seaport represents the core functionality of the port forwarding
 // It forwards the paths specified by the routes keys to their corresponding port values
 type Seaport struct {
-	routes   map[string]int // map of routes -> ports
-	listener net.Listener
-}
-
-// NewSeaport returns a new seaport object
-func NewSeaport(routes map[string]int) *Seaport {
-	s := Seaport{routes, nil}
-	return &s
+	Routes   map[string]int // map of routes -> ports
+	Listener net.Listener
 }
 
 // Listen starts the server
-func (s *Seaport) Listen(port int) {
-	portStr := ":" + strconv.Itoa(port)
-	listener, err := net.Listen("tcp", portStr)
-	if err != nil {
-		log.Fatal("Unable to listen: ", err)
-	}
-
-	s.listener = listener
-
+func (s Seaport) Listen() {	
 	for {
 		// Wait for a connection.
-		conn, err := listener.Accept()
+		conn, err := s.Listener.Accept()
 		if err != nil {
 			log.Warn(err)
 			break
 		}
 
 		// Handle the request
-		go forward(conn, s.routes)
+		go forward(conn, s.Routes)
 	}
 }
 
 // Close closes the listener connection, stopping seaport
-func (s *Seaport) Close() {
-	s.listener.Close()
+func (s Seaport) Close() {
+	s.Listener.Close()
 }
 
 func forward(in net.Conn, routes map[string]int) {

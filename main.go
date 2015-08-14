@@ -4,7 +4,11 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 
+	"bytes"
+	"net"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/drhurd/seaport/docker"
 	"github.com/drhurd/seaport/nginx"
@@ -18,7 +22,7 @@ const (
 var (
 	serverPort  = kingpin.Flag("port", "Specify the port seaport should use. Defaults to 80.").Default("80").Short('p').Int()
 	seaportMode = kingpin.Flag("forward", "Use Seaport instead of Nginx to forward to docker containers. Currently under development, not recommended.").Short('f').Bool()
-	stop         = kingpin.Flag("stop", "Stop the Nginx server").Short('s').Bool()
+	stop        = kingpin.Flag("stop", "Stop the Nginx server").Short('s').Bool()
 	nginxFile   = kingpin.Flag("config", "Nginx config file, Default = /etc/nginx/nginx.conf").Short('c').Default("/etc/nginx/nginx.conf").String()
 )
 
@@ -32,7 +36,12 @@ func main() {
 	if *seaportMode {
 		runSeaportServer(*serverPort)
 	} else if *stop {
-		nginx.StopNginx()
+		cmd := nginx.StopCommand()
+
+		err := cmd.Run()
+		if err != nil {
+			log.Fatal(err)
+		}
 	} else {
 		runNginxServer()
 	}
@@ -40,9 +49,15 @@ func main() {
 
 func runSeaportServer(port int) {
 	routes := makeRouteMap(docker.ListContainers())
-	s := seaport.NewSeaport(routes)
-	s.Listen(port)
-	return
+	listener, err := net.Listen("tcp", ":" + strconv.Itoa(port))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+
+	s := seaport.Seaport{routes, listener}
+
+	s.Listen()
 }
 
 func runNginxServer() {
@@ -56,16 +71,17 @@ func runNginxServer() {
 
 	nginx.WriteConfigFile(file, routes, nginx.Config{ServerName: "localhost"})
 
-	log.Debug("file written")
+	if getNginxStatus() {
+		cmd := nginx.StopCommand()
 
-	if nginx.Status() {
-		err = nginx.StopNginx()
+		err := cmd.Run()
 		if err != nil {
 			log.Fatal("Couldn't stop nginx: ", err)
 		}
 	}
 
-	err = nginx.StartNginx(*nginxFile)
+	cmd := nginx.StartCommand(*nginxFile)
+	err = cmd.Run()
 	if err != nil {
 		log.Fatal("Couldn't start nginx: ", err)
 	}
@@ -77,4 +93,14 @@ func makeRouteMap(containers []docker.Container) map[string]int {
 		routes[container.Name] = int(container.Port)
 	}
 	return routes
+}
+
+func getNginxStatus() bool {
+	cmd := nginx.StatusCommand()
+
+	data, _ := cmd.Output() // exit codes are frustrating, will handle errors later
+
+	output := bytes.NewBuffer(data).String()
+
+	return strings.Index(output, "not") == -1
 }
